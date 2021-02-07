@@ -1,0 +1,8 @@
+{
+  "runtimeOptions": {
+    "additionalProbingPaths": [
+      "C:\\Users\\Vedat\\.dotnet\\store\\|arch|\\|tfm|",
+      "C:\\Users\\Vedat\\.nuget\\packages"
+    ]
+  }
+}

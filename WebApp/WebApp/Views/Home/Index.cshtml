@@ -1,0 +1,176 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome</h1>
+    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+</div>
+<div class="row">
+    <div class="col-md-8 offset-2">
+        <input type="text" class="form-control" id="txtName" />
+        <hr />
+        <button class="btn btn-primary" id="isimkaydet">İsim Kaydet</button>
+        <button class="btn btn-warning" id="btnNameTeam">Takım Kaydet</button>
+        
+        
+
+        <div class="alert alert-info" role="alert">
+            <div class="float-left">
+                Bağlantı Durumu:<strong id="conStatus"></strong>
+                ,Client Sayısı:<strong id="clientCount"></strong>
+            </div>
+            <div class="float-right">
+                <div id="loading" class="spinner-border" role="status" style="display: none;">
+                    <span class="sr-only">Loading</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-8 offset-2">
+            <div class="col-md-8 offset-md-2">
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="temGroup" value="Team A"/>
+                    <label class="form-check-label">A Takımı</label>
+
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="temGroup" value="Team B"/>
+                    <label class="form-check-label">B Takımı</label>
+
+                </div>
+            </div>
+          
+        </div>
+    </div>
+</div>
+  <div class="col-md-12">
+<div class="row">
+  
+        <div class="col-md-6">
+            ATEam
+            <ul class="list-group" id="AnamesList"></ul>
+        </div>
+        BTEam
+        <div class="col-md-6">
+            <ul class="list-group" id="BnamesList"></ul>
+        </div>
+    </div>
+</div>
+
+
+
+@section Scripts
+{
+    <script src="~/microsoft/signalr/dist/browser/signalr.min.js"></script>
+    <script type="text/javascript">
+
+        $(function() {
+            var connection = new signalR.HubConnectionBuilder()
+                .withAutomaticReconnect([1000, 1000, 3000, 1000])
+                .withUrl("https://localhost:44393/MyHub").build();
+            statusShow();
+            start();
+
+            function statusShow() {
+                $("#conStatus").text(connection.connectionState);
+
+            }
+            function start() {
+                connection.start().then(() => {
+                    statusShow();
+                    connection.invoke("GetNames");
+                }).catch((err) => {
+                    console.log(err);
+                    setTimeout(() => {
+                            start();
+                        },
+                        2000);
+                });
+            }
+            connection.on("ReceiveNames",
+                (names) => {
+                    $("#namesList").empty();
+                    names.forEach((item, index) => {
+                        $("#namesList").append(`<li class="list-group-item">${item}</li>`);
+                    });
+                });
+            connection.onreconnecting(err => {
+                $("#loading").attr('style', 'display:block');
+                statusShow();
+                console.log("hata:" + err);
+            });
+            connection.onreconnected(connectionId => {
+                $("#loading").attr('style', 'display:none');
+                statusShow();
+                console.log("connectionId:" + connectionId);
+            });
+            connection.onclose(() => {
+                $("#loading").attr('style', 'display:none');
+                statusShow();
+                start();
+            });
+            connection.on("ReceiveClientCount",
+                (clientCount) => {
+                    $("#clientCount").text(clientCount);
+                });
+            connection.on("Notify",
+                (counttext) => {
+                    alert(counttext);
+                });
+            connection.on("Error",
+                (errortext) => {
+                    alert(errortext);
+                });
+
+            $("#isimkaydet").click(() => {
+                connection.invoke("SendName", $("#txtName").val()).catch((err) => console.log(err));
+            });
+            connection.on("ReceiveMessage",
+                (name, deger) => {
+                    debugger;
+                    $("#namesList").append(`<li>${name}</li>`);
+                    $("#degerler").text(deger);
+                });
+
+
+            //Groups
+            $("#btnNameTeam").click(() => {
+                debugger;
+                let name = $("#txtName").val();
+                let teamName = $("input[type=radio]:checked").val();
+                connection.invoke("SendNameByGroup", name, teamName).catch((err) => { console.log(err); });
+            });
+
+            connection.on("ReceiveMessageByGroup",
+                (name, teamId) => {
+                    debugger;
+                   
+                    if (teamId === 1) {
+                        listname = 'AnamesList';
+                        $("#AnamesList").append(`<li class="list-group-item">${name}</li>`);
+                    } else {
+                        $("#BnamesList").append(`<li class="list-group-item">${name}</li>`);
+                    }
+                 
+                });
+
+
+            $("input[type=radio]").change(() => {
+                let value = $(`input[type=radio]:checked`).val();
+                if (value === "Team A") {
+                    connection.invoke("AddGroup", value);
+                    connection.invoke("RemoveToGroup", "Team B");
+
+                }
+                else {
+                    connection.invoke("AddGroup", value);
+                    connection.invoke("RemoveToGroup", "Team A");
+                }
+            });
+
+
+        });
+
+
+    </script>
+}
